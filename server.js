@@ -1,4 +1,5 @@
 import express from "express";
+import cors from 'cors';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, child, get, set } from "firebase/database";
 
@@ -18,10 +19,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 api.listen(PORT);
 
-console.log('RadioBON API started on port 3000!');
+console.log("RadioBON API started on port " + PORT + "!");
+
+api.use(cors());
+
+api.get("/", async (req, res) => {
+  res.send("RadioBON API!");
+});
 
 api.get("/broadcasts", async (req, res) => {
   const dbRef = ref(getDatabase());
