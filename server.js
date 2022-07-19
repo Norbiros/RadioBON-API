@@ -62,8 +62,8 @@ api.post("/broadcast", async (req, res) => {
   }
 });
 
-// Get API to show broadcasts
-api.get("/broadcasts", async (req, res) => {
+// Get API to show audition ideas
+api.get("/auditions", async (req, res) => {
   const dbRef = ref(getDatabase());
   const data = await get(child(dbRef, `ideas/`));
   if (data.exists()) {
@@ -73,7 +73,7 @@ api.get("/broadcasts", async (req, res) => {
   }
 });
 
-// Post API to add new broadcasts
+// Post API to add new audition ideas
 api.post("/new-idea", async (req, res) => {
   const dbRef = ref(getDatabase());
   const data = await get(child(dbRef, `ideas/`));
