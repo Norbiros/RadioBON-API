@@ -43,7 +43,7 @@ api.get("/broadcasts", async (req, response) => {
 
 // Post API to add new broadcasts
 api.post("/broadcast", async (req, response) => {
-  client.query(`insert into auditions (title, description) values ('${req.body.title}', '${req.body.description}');`, (err, res) => {
+  client.query(`insert into auditions (title, description) values ('$client.escapeLiteral({req.body.title})', '$client.escapeLiteral({req.body.description})');`, (err, res) => {
     if (err) {
       response.status(500).send({message: "Database error!"});
       return;
