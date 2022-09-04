@@ -1,19 +1,26 @@
 import express from "express";
-import cors from 'cors';
+import cors from "cors";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
-const { createHash, randomBytes } = await import('node:crypto');
-import postgresql from 'pg';
+const { randomBytes } = await import("node:crypto");
+import postgresql from "pg";
 
-import {fetchKalibiData, fetchLibrusData, checkCredentials, isLoggedIn} from './utils.js';
+import {
+  fetchKalibiData,
+  fetchLibrusData,
+  checkCredentials,
+  isLoggedIn,
+} from "./utils.js";
 
 const api = express();
+/*
 const kalibiData = await fetchKalibiData();
-kalibiData.forEach(function(e) {
-  e.forEach(function(el) {
+kalibiData.forEach(function (e) {
+  e.forEach(function (el) {
     //console.log(el.description);
-  })
-})
+  });
+});
+*/
 
 const PORT = process.env.PORT || 8000;
 api.listen(PORT);
@@ -21,20 +28,20 @@ const { Client } = postgresql;
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false
-  }
+    rejectUnauthorized: false,
+  },
 });
 client.connect();
 console.log("RadioBON API started on port " + PORT + "!");
 
 const corsOptions = {
   origin: process.env.WEBSITE_URL,
-  credentials: true
-}
+  credentials: true,
+};
 api.use(cors(corsOptions));
 api.use(cookieParser());
-api.use(bodyParser.urlencoded({ extended: false })) 
-api.use(bodyParser.json())
+api.use(bodyParser.urlencoded({ extended: false }));
+api.use(bodyParser.json());
 
 api.get("/", async (req, res) => {
   res.send("RadioBON API!");
@@ -42,14 +49,14 @@ api.get("/", async (req, res) => {
 
 // Get API to show broadcasts
 api.get("/broadcasts", async (req, response) => {
-  client.query('select * from auditions;', (err, res) => {
+  client.query("select * from auditions;", (err, res) => {
     if (err) {
       response.status(500).send(err);
       return;
     }
-    response.set('Content-Type', 'application/json');
+    response.set("Content-Type", "application/json");
     response.status(200).json(res.rows);
-   });
+  });
 });
 
 api.post("/auth/login", async (req, response) => {
@@ -60,12 +67,15 @@ api.post("/auth/login", async (req, response) => {
   }
   if (verified === true) {
     let sessionId = randomBytes(16).toString("hex");
-    response.setHeader('Set-Cookie', `sessionId=${sessionId}; Path=/; SameSite=None; Secure;`);
+    response.setHeader(
+      "Set-Cookie",
+      `sessionId=${sessionId}; Path=/; SameSite=None; Secure;`
+    );
+    client.query(
+      `insert into sessions (username, sessionId) values ('${req.body.username}', '${sessionId}'); select * from sessions;`,
+      (err, res) => {}
+    );
     response.status(200).send("Pomyślnie zalogowano!");
-    client.query(`insert into sessions (username, sessionId) values ('${req.body.username}', '${sessionId}'); select * from sessions;`, (err, res) => {
-      console.log(res.rows);
-      console.log(err);
-    });
   } else {
     response.status(401).send("Nie poprawne dane logowania!");
   }
@@ -91,19 +101,26 @@ api.post("/broadcast", async (req, response) => {
     return;
   }
 
-  client.query(`insert into auditions (title, description) values ('${req.body.title}', '${req.body.description}');`, (err, res) => {
-    if (err) {
-      console.log(err);
-      response.status(500).send("Niestety natrafiono na problem z bazą danych!");
-      return;
+  client.query(
+    `insert into auditions (title, description) values ('${req.body.title}', '${req.body.description}');`,
+    (err, res) => {
+      if (err) {
+        console.log(err);
+        response
+          .status(500)
+          .send("Niestety natrafiono na problem z bazą danych!");
+        return;
+      }
+      response.status(200).send("Pomyślnie dodano audycję!");
     }
-    response.status(200).send("Pomyślnie dodano audycję!");
-  });
+  );
 });
 
 api.get("/isLoggedIn", async (req, response) => {
-  client.query('select * from sessions;', (err, res) => {
-    let specificRow = res.rows.find(e => e.sessionid === req.cookies.sessionId);
-    response.send(!!specificRow);
+  client.query("select * from sessions;", (err, res) => {
+    let specificRow = res.rows.find(
+      (e) => e.sessionid === req.cookies.sessionId
+    );
+    response.status(200).send(!!specificRow);
   });
 });
