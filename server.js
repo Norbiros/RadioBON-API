@@ -28,7 +28,7 @@ client.connect();
 console.log("RadioBON API started on port " + PORT + "!");
 
 const corsOptions = {
-  origin: 'http://localhost:3000',
+  origin: process.env.WEBSITE_URL,
   credentials: true
 }
 api.use(cors(corsOptions));
