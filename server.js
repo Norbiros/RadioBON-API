@@ -60,7 +60,7 @@ api.post("/auth/login", async (req, response) => {
   }
   if (verified === true) {
     let sessionId = randomBytes(16).toString("hex");
-    response.setHeader('Set-Cookie', `sessionId=${sessionId}; Path=/; SameSite=Lax`);
+    response.setHeader('Set-Cookie', `sessionId=${sessionId}; Path=/; SameSite=None;`);
     response.status(200).send("Pomyślnie zalogowano!");
     client.query(`insert into sessions (username, sessionId) values ('${req.body.username}', '${sessionId}'); select * from sessions;`, (err, res) => {
       console.log(res.rows);
