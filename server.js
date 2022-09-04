@@ -9,19 +9,14 @@ import {fetchKalibiData, fetchLibrusData, checkCredentials, isLoggedIn} from './
 
 const api = express();
 const kalibiData = await fetchKalibiData();
-const librusData = await fetchLibrusData();
-
 kalibiData.forEach(function(e) {
   e.forEach(function(el) {
     //console.log(el.description);
   })
 })
-console.log(librusData);
-
 
 const PORT = process.env.PORT || 8000;
 api.listen(PORT);
-
 const { Client } = postgresql;
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
@@ -30,7 +25,6 @@ const client = new Client({
   }
 });
 client.connect();
-
 console.log("RadioBON API started on port " + PORT + "!");
 
 const corsOptions = {
