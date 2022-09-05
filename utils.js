@@ -3,6 +3,8 @@ import librus from "librus-api";
 import jsdom from "jsdom";
 const { createHash } = await import("node:crypto");
 
+import { supabase } from "./server.js";
+
 export async function fetchKalibiData() {
   const html = await (
     await fetch("https://www.kalbi.pl/kalendarz-swiat-nietypowych")
@@ -33,17 +35,47 @@ export async function fetchLibrusData() {
   return await librusClient;
 }
 
-export async function checkCredentials(req, client) {
-  let res = await client.query("select * from passwords;");
+export async function checkCredentials(req) {
   let hashedPassword = createHash("sha256")
     .update(req.body.password)
     .digest("hex");
-  return !!res.rows.find(
-    (e) => req.body.username == e.username && hashedPassword == e.password
-  );
+
+  const { data, error } = await supabase
+    .from("users")
+    .select()
+    .eq("username", req.body.username)
+    .eq("password", hashedPassword);
+
+  if (error) console.error(error);
+  return data.length > 0;
 }
 
-export async function isLoggedIn(req, client) {
-  let res = await client.query("select * from sessions;");
-  return !!res.rows.find((e) => e.sessionid === req.cookies.sessionId);
+export async function checkForPermission(username, permission) {
+  const { data, error } = await supabase
+    .from("users")
+    .select()
+    .eq("username", username)
+    .eq("permission", permission);
+  if (error) console.error(error);
+  return data.length > 0;
+}
+
+export async function isLoggedIn(req) {
+  const { data, error } = await supabase
+    .from("sessions")
+    .select()
+    .eq("session_id", req.cookies.sessionId);
+  console.log(data);
+  if (error) console.error(error);
+  return data.length > 0;
+}
+
+export async function getUsernameFromCookies(req) {
+  const { data, error } = await supabase
+    .from("sessions")
+    .select()
+    .eq("session_id", req.cookies.sessionId);
+  if (error) console.error(error);
+  if (!data[0]) return false;
+  return data[0].username;
 }

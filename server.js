@@ -2,14 +2,16 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
-const { randomBytes } = await import("node:crypto");
-import postgresql from "pg";
+const { randomBytes, createHash } = await import("node:crypto");
+import { createClient } from "@supabase/supabase-js";
 
 import {
   fetchKalibiData,
   fetchLibrusData,
   checkCredentials,
   isLoggedIn,
+  checkForPermission,
+  getUsernameFromCookies,
 } from "./utils.js";
 
 const api = express();
@@ -21,17 +23,14 @@ kalibiData.forEach(function (e) {
   });
 });
 */
+export const supabase = createClient(
+  "https://plxghautgvsgtichsmkr.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBseGdoYXV0Z3ZzZ3RpY2hzbWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjIyODQyMTQsImV4cCI6MTk3Nzg2MDIxNH0.KX0mM9SUiEjKQHn4d2HXjc5t-8p1sA9tpUd_hv79jIU"
+);
 
 const PORT = process.env.PORT || 8000;
 api.listen(PORT);
-const { Client } = postgresql;
-const client = new Client({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
-client.connect();
+
 console.log("RadioBON API started on port " + PORT + "!");
 
 const corsOptions = {
@@ -49,78 +48,109 @@ api.get("/", async (req, res) => {
 
 // Get API to show broadcasts
 api.get("/broadcasts", async (req, response) => {
-  client.query("select * from auditions;", (err, res) => {
-    if (err) {
-      response.status(500).send(err);
-      return;
-    }
-    response.set("Content-Type", "application/json");
-    response.status(200).json(res.rows);
-  });
+  const { data, error } = await supabase.from("auditions").select();
+  if (error) {
+    response
+      .status(500)
+      .send("Natrafiono na niespodziewany błąd z bazą danych!");
+    console.error(error);
+    return;
+  }
+  response.set("Content-Type", "application/json");
+  response.status(200).json(data);
 });
 
 api.post("/auth/login", async (req, response) => {
-  let verified = await checkCredentials(req, client);
+  let verified = await checkCredentials(req);
   if (!!req.cookies.sessionId) {
     response.status(400).send("Jesteś już zalogowany/a!");
     return;
   }
   if (verified === true) {
     let sessionId = randomBytes(16).toString("hex");
-    response.setHeader(
-      "Set-Cookie",
-      `sessionId=${sessionId}; Path=/; SameSite=None; Secure;`
-    );
-    client.query(
-      `insert into sessions (username, sessionId) values ('${req.body.username}', '${sessionId}'); select * from sessions;`,
-      (err, res) => {}
-    );
-    response.status(200).send("Pomyślnie zalogowano!");
+
+    const { tData, tError } = await supabase
+      .from("sessions")
+      .delete()
+      .match({ username: req.body.username });
+    if (tError) {
+      console.error(tError);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("sessions")
+      .insert([{ username: req.body.username, session_id: sessionId }]);
+
+    if (error) {
+      response
+        .status(500)
+        .send("Niestety natrafiono na problem z bazą danych!");
+      console.error(error);
+    } else {
+      response.setHeader(
+        "Set-Cookie",
+        `sessionId=${sessionId}; Path=/; SameSite=None; Secure;`
+      );
+      response.status(200).send("Pomyślnie zalogowano!");
+    }
   } else {
     response.status(401).send("Nie poprawne dane logowania!");
   }
 });
 
-/*
 api.post("/register", async (req, response) => {
-  let hashedPassword = createHash('sha256').update(req.body.password).digest('hex');
-  client.query(`insert into passwords (username, password) values ('${req.body.username}' , '${hashedPassword}'); select * from passwords;`, (err, res) => {
-    if (err) {
-      response.status(500).send("Niestety natrafiono na problem z bazą danych!");
-      return;
-    }
+  if (!(await checkForPermission(await getUsernameFromCookies(req), "root"))) {
+    response.status(401).send("Nie masz uprawnień!");
+    return;
+  }
+  let hashedPassword = createHash("sha256")
+    .update(req.body.password)
+    .digest("hex");
+
+  const { data, error } = await supabase
+    .from("users")
+    .insert([
+      {
+        username: req.body.username,
+        password: hashedPassword,
+        permission: req.body.permission,
+      },
+    ]);
+
+  if (error) {
+    response.status(500).send("Niestety natrafiono na problem z bazą danych!");
+    console.error(error);
+  } else {
     response.status(200).send("Pomyślnie zarejestrowano użytkownika!");
-  });
+  }
 });
-*/
 
 // Post API to add new broadcasts
 api.post("/broadcast", async (req, response) => {
-  if ((await isLoggedIn(req, client)) !== true) {
+  if ((await isLoggedIn(req)) !== true) {
     response.status(401).send("Nie zalogowano!");
     return;
   }
 
-  client.query(
-    `insert into auditions (title, description) values ('${req.body.title}', '${req.body.description}');`,
-    (err, res) => {
-      if (err) {
-        console.log(err);
-        response
-          .status(500)
-          .send("Niestety natrafiono na problem z bazą danych!");
-        return;
-      }
-      response.status(200).send("Pomyślnie dodano audycję!");
-    }
-  );
+  const { data, error } = await supabase
+    .from("auditions")
+    .insert([{ title: req.body.title, description: req.body.description }]);
+
+  if (error) {
+    console.error(error);
+    response.status(500).send("Niestety natrafiono na problem z bazą danych!");
+  } else {
+    response.status(200).send("Pomyślnie dodano audycję!");
+  }
 });
 
 api.get("/isLoggedIn", async (req, response) => {
-  client.query("select * from sessions;", (err, res) => {
-    let specificRow = res.rows.find(
-      (e) => e.sessionid === req.cookies.sessionId
-    );
-    response.status(200).send(!!specificRow);
-  });
+  response.status(200).send(await isLoggedIn(req));
+});
+
+api.get("/iAmRoot", async (req, response) => {
+  response
+    .status(200)
+    .send(await checkForPermission(await getUsernameFromCookies(req), "root"));
 });
