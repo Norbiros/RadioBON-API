@@ -1,20 +1,12 @@
-import express from "express";
-import cors from "cors";
-import bodyParser from "body-parser";
-import cookieParser from "cookie-parser";
-const { randomBytes, createHash } = await import("node:crypto");
-import { createClient } from "@supabase/supabase-js";
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
+const crypto = require("crypto");
+const { createClient } = require("@supabase/supabase-js");
 
-import {
-  fetchKalibiData,
-  fetchLibrusData,
-  checkCredentials,
-  isLoggedIn,
-  checkForPermission,
-  getUsernameFromCookies,
-} from "./utils.js";
-
-const api = express();
+const utils = require("./utils");
+const app = express();
 /*
 const kalibiData = await fetchKalibiData();
 kalibiData.forEach(function (e) {
@@ -23,13 +15,14 @@ kalibiData.forEach(function (e) {
   });
 });
 */
-export const supabase = createClient(
+
+const supabase = createClient(
   "https://plxghautgvsgtichsmkr.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBseGdoYXV0Z3ZzZ3RpY2hzbWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjIyODQyMTQsImV4cCI6MTk3Nzg2MDIxNH0.KX0mM9SUiEjKQHn4d2HXjc5t-8p1sA9tpUd_hv79jIU"
+  process.env.SUPABASE_KEY
 );
 
 const PORT = process.env.PORT || 8000;
-api.listen(PORT);
+app.listen(PORT);
 
 console.log("RadioBON API started on port " + PORT + "!");
 
@@ -37,17 +30,17 @@ const corsOptions = {
   origin: process.env.WEBSITE_URL,
   credentials: true,
 };
-api.use(cors(corsOptions));
-api.use(cookieParser());
-api.use(bodyParser.urlencoded({ extended: false }));
-api.use(bodyParser.json());
+app.use(cors(corsOptions));
+app.use(cookieParser());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-api.get("/", async (req, res) => {
+app.get("/", async (req, res) => {
   res.send("RadioBON API!");
 });
 
 // Get API to show broadcasts
-api.get("/broadcasts", async (req, response) => {
+app.get("/broadcasts", async (req, response) => {
   const { data, error } = await supabase.from("auditions").select();
   if (error) {
     response
@@ -60,10 +53,10 @@ api.get("/broadcasts", async (req, response) => {
   response.status(200).json(data);
 });
 
-api.post("/auth/login", async (req, response) => {
-  let verified = await checkCredentials(req);
+app.post("/auth/login", async (req, response) => {
+  let verified = await utils.checkCredentials(req);
   if (verified === true) {
-    let sessionId = randomBytes(16).toString("hex");
+    let sessionId = crypto.randomBytes(16).toString("hex");
 
     const { data, error } = await supabase
       .from("sessions")
@@ -86,12 +79,18 @@ api.post("/auth/login", async (req, response) => {
   }
 });
 
-api.post("/register", async (req, response) => {
-  if (!(await checkForPermission(await getUsernameFromCookies(req), "root"))) {
+app.post("/register", async (req, response) => {
+  if (
+    !(await utils.checkForPermission(
+      await utils.getUsernameFromCookies(req),
+      "root"
+    ))
+  ) {
     response.status(401).send("Nie masz uprawnień!");
     return;
   }
-  let hashedPassword = createHash("sha256")
+  let hashedPassword = crypto
+    .createHash("sha256")
     .update(req.body.password)
     .digest("hex");
 
@@ -112,8 +111,8 @@ api.post("/register", async (req, response) => {
 });
 
 // Post API to add new broadcasts
-api.post("/broadcast", async (req, response) => {
-  if ((await isLoggedIn(req)) !== true) {
+app.post("/broadcast", async (req, response) => {
+  if ((await utils.isLoggedIn(req)) !== true) {
     response.status(401).send("Nie zalogowano!");
     return;
   }
@@ -130,18 +129,33 @@ api.post("/broadcast", async (req, response) => {
   }
 });
 
-api.get("/isLoggedIn", async (req, response) => {
-  response.status(200).send(await isLoggedIn(req));
+app.get("/isLoggedIn", async (req, response) => {
+  response.status(200).send(await utils.isLoggedIn(req));
 });
 
-api.get("/iAmRoot", async (req, response) => {
+app.get("/iAmRoot", async (req, response) => {
   response
     .status(200)
-    .send(await checkForPermission(await getUsernameFromCookies(req), "root"));
+    .send(
+      await utils.checkForPermission(
+        await utils.getUsernameFromCookies(req),
+        "root"
+      )
+    );
 });
 
-api.get("/iAmAdmin", async (req, response) => {
+app.get("/iAmAdmin", async (req, response) => {
   response
     .status(200)
-    .send(await checkForPermission(await getUsernameFromCookies(req), "admin"));
+    .send(
+      await utils.checkForPermission(
+        await utils.getUsernameFromCookies(req),
+        "admin"
+      )
+    );
 });
+
+module.exports = {
+  supabase,
+  app,
+};
