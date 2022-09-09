@@ -62,21 +62,8 @@ api.get("/broadcasts", async (req, response) => {
 
 api.post("/auth/login", async (req, response) => {
   let verified = await checkCredentials(req);
-  if (!!req.cookies.sessionId) {
-    response.status(400).send("Jesteś już zalogowany/a!");
-    return;
-  }
   if (verified === true) {
     let sessionId = randomBytes(16).toString("hex");
-
-    const { tData, tError } = await supabase
-      .from("sessions")
-      .delete()
-      .match({ username: req.body.username });
-    if (tError) {
-      console.error(tError);
-      return;
-    }
 
     const { data, error } = await supabase
       .from("sessions")
@@ -108,15 +95,13 @@ api.post("/register", async (req, response) => {
     .update(req.body.password)
     .digest("hex");
 
-  const { data, error } = await supabase
-    .from("users")
-    .insert([
-      {
-        username: req.body.username,
-        password: hashedPassword,
-        permission: req.body.permission,
-      },
-    ]);
+  const { data, error } = await supabase.from("users").insert([
+    {
+      username: req.body.username,
+      password: hashedPassword,
+      permission: req.body.permission,
+    },
+  ]);
 
   if (error) {
     response.status(500).send("Niestety natrafiono na problem z bazą danych!");
@@ -153,4 +138,10 @@ api.get("/iAmRoot", async (req, response) => {
   response
     .status(200)
     .send(await checkForPermission(await getUsernameFromCookies(req), "root"));
+});
+
+api.get("/iAmAdmin", async (req, response) => {
+  response
+    .status(200)
+    .send(await checkForPermission(await getUsernameFromCookies(req), "admin"));
 });
