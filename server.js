@@ -167,6 +167,13 @@ app.get("/librusAnnouncements", async (req, response) => {
 app.get("/specialDays", async (req, response) => {
   response.status(200).send(await utils.fetchKalibiData(req.query.limit));
 });
+app.get("/dinnerData", async (req, response) => {
+  let data = await utils.dinnersData;
+  if (req.query.date) {
+    data = data.find((e) => (e.date = req.query.date));
+  }
+  response.status(200).send(data);
+});
 
 module.exports = {
   app,
