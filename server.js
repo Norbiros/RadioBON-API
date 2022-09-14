@@ -7,14 +7,6 @@ const { createClient } = require("@supabase/supabase-js");
 
 const utils = require("./utils");
 const app = express();
-/*
-const kalibiData = await fetchKalibiData();
-kalibiData.forEach(function (e) {
-  e.forEach(function (el) {
-    //console.log(el.description);
-  });
-});
-*/
 
 const supabase = createClient(
   "https://plxghautgvsgtichsmkr.supabase.co",
@@ -156,6 +148,24 @@ app.get("/iAmAdmin", async (req, response) => {
         supabase
       )
     );
+});
+
+app.get("/librusAnnouncements", async (req, response) => {
+  if (
+    await utils.checkForPermission(
+      await utils.getUsernameFromCookies(req, supabase),
+      "admin",
+      supabase
+    )
+  ) {
+    response.status(401).send("Nie masz dostępu!");
+    return;
+  }
+  response.status(200).send((await utils.fetchLibrusData()).slice(0, 15));
+});
+
+app.get("/specialDays", async (req, response) => {
+  response.status(200).send(await utils.fetchKalibiData(req.query.limit));
 });
 
 module.exports = {

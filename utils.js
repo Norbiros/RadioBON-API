@@ -45,7 +45,7 @@ module.exports = {
     if (!data[0]) return false;
     return data[0].username;
   },
-  fetchKalibiData: async function () {
+  fetchKalibiData: async function (limit) {
     const html = await (
       await fetch("https://www.kalbi.pl/kalendarz-swiat-nietypowych")
     ).text(); // html as text
@@ -64,13 +64,13 @@ module.exports = {
       });
       descriptions.push(description);
     });
-    return descriptions;
+    return descriptions.slice(0, limit ? limit : 10);
   },
   fetchLibrusData: async function () {
     let c = new librus();
     let librusClient = c
       .authorize(process.env.LIBRUS_USERNAME, process.env.LIBRUS_PASSWORD)
-      .then(function () {
+      .then(async function () {
         return c.inbox.listAnnouncements();
       });
     return await librusClient;
