@@ -54,7 +54,7 @@ app.get("/broadcasts", async (req, response) => {
 });
 
 app.post("/auth/login", async (req, response) => {
-  let verified = await utils.checkCredentials(req);
+  let verified = await utils.checkCredentials(req, supabase);
   if (verified === true) {
     let sessionId = crypto.randomBytes(16).toString("hex");
 
@@ -82,8 +82,9 @@ app.post("/auth/login", async (req, response) => {
 app.post("/register", async (req, response) => {
   if (
     !(await utils.checkForPermission(
-      await utils.getUsernameFromCookies(req),
-      "root"
+      await utils.getUsernameFromCookies(req, supabase),
+      "root",
+      supabase
     ))
   ) {
     response.status(401).send("Nie masz uprawnień!");
@@ -112,7 +113,7 @@ app.post("/register", async (req, response) => {
 
 // Post API to add new broadcasts
 app.post("/broadcast", async (req, response) => {
-  if ((await utils.isLoggedIn(req)) !== true) {
+  if ((await utils.isLoggedIn(req, supabase)) !== true) {
     response.status(401).send("Nie zalogowano!");
     return;
   }
@@ -130,7 +131,7 @@ app.post("/broadcast", async (req, response) => {
 });
 
 app.get("/isLoggedIn", async (req, response) => {
-  response.status(200).send(await utils.isLoggedIn(req));
+  response.status(200).send(await utils.isLoggedIn(req, supabase));
 });
 
 app.get("/iAmRoot", async (req, response) => {
@@ -138,8 +139,9 @@ app.get("/iAmRoot", async (req, response) => {
     .status(200)
     .send(
       await utils.checkForPermission(
-        await utils.getUsernameFromCookies(req),
-        "root"
+        await utils.getUsernameFromCookies(req, supabase),
+        "root",
+        supabase
       )
     );
 });
@@ -149,13 +151,13 @@ app.get("/iAmAdmin", async (req, response) => {
     .status(200)
     .send(
       await utils.checkForPermission(
-        await utils.getUsernameFromCookies(req),
-        "admin"
+        await utils.getUsernameFromCookies(req, supabase),
+        "admin",
+        supabase
       )
     );
 });
 
 module.exports = {
-  supabase,
   app,
 };
