@@ -1,6 +1,7 @@
 const librus = require("librus-api");
 const jsdom = require("jsdom");
 const crypto = require("crypto");
+const axios = require("axios").default;
 const http = require("https"); // or 'https' for https:// URLs
 const fs = require("fs");
 const reader = require("any-text");
@@ -8,8 +9,8 @@ const reader = require("any-text");
 // We need to make it one-time function because it is slow, and it doesn't need to be updated per request
 let dinnersData = new Promise(async function (resolve) {
   const html = await (
-    await fetch("https://sp40krakow.edupage.org/teachers/")
-  ).text(); // html as text
+    await axios.get("https://sp40krakow.edupage.org/teachers/")
+  ).data; // html as text
   const doc = new jsdom.JSDOM(html).window.document;
   let link = doc
     .querySelector("#teachers_Html_2")
@@ -20,21 +21,16 @@ let dinnersData = new Promise(async function (resolve) {
     response.pipe(file);
     file.on("finish", function () {
       reader.getText(`food.docx`).then(function (data) {
+        data = data.replace(/ *\([^)]*\) */g, " ").trim();
+        data = data.replaceAll(" , ", ", ");
         let objects = [];
-        let loop = 0;
-        let reg = /[0-9][0-9]?\.[0-9][0-9]?\.22/gm;
+        let reg = /([0-3]?[0-9]\.[0-1][0-9]\.2[0-9])[A-ZŚ][^A-ZŚ]+([^.]+)/gm;
         let result;
         while ((result = reg.exec(data)) !== null) {
-          let e = data.split(/[0-9][0-9]?\.[0-9][0-9]?\.22/gm)[loop];
-          if (!e.includes("JADŁOSPIS")) {
-            if (e.includes("ok.")) e = e.replace(".", " ");
-            e = e.split(".")[0];
-            let el = {};
-            el.date = result[0];
-            el.text = e.replace(/[A-ZŚ][^A-ZŚ]+/, "");
-            objects.push(el);
-          }
-          loop++;
+          let el = {};
+          el.date = result[1];
+          el.text = result[2];
+          objects.push(el);
         }
         resolve(objects);
       });
@@ -72,7 +68,6 @@ module.exports = {
       .from("sessions")
       .select()
       .eq("session_id", req.cookies.sessionId);
-    console.log(data);
     if (error) console.error(error);
     return data.length > 0;
   },
@@ -87,8 +82,8 @@ module.exports = {
   },
   fetchKalibiData: async function (limit) {
     const html = await (
-      await fetch("https://www.kalbi.pl/kalendarz-swiat-nietypowych")
-    ).text(); // html as text
+      await axios.get("https://www.kalbi.pl/kalendarz-swiat-nietypowych")
+    ).data; // html as text
     const doc = new jsdom.JSDOM(html).window.document;
     let descriptions = [];
     doc.querySelectorAll(".descritoptions-of-holiday").forEach(function (e) {

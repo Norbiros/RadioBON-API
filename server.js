@@ -170,7 +170,7 @@ app.get("/specialDays", async (req, response) => {
 app.get("/dinnerData", async (req, response) => {
   let data = await utils.dinnersData;
   if (req.query.date) {
-    data = data.find((e) => (e.date = req.query.date));
+    data = data.find(el => (el.date == req.query.date));
   }
   response.status(200).send(data);
 });
