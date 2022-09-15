@@ -2,6 +2,7 @@ const librus = require("librus-api");
 const jsdom = require("jsdom");
 const crypto = require("crypto");
 const axios = require("axios").default;
+const path = require("path");
 const http = require("https"); // or 'https' for https:// URLs
 const fs = require("fs");
 const reader = require("any-text");
@@ -16,11 +17,11 @@ let dinnersData = new Promise(async function (resolve) {
     .querySelector("#teachers_Html_2")
     .lastChild.querySelector("a").href;
   link = link.replace("//", "https://");
-  let file = fs.createWriteStream("tmp/food.docx");
+  let file = fs.createWriteStream("/tmp/food.docx");
   http.get(link, function (response) {
     response.pipe(file);
     file.on("finish", function () {
-      reader.getText(`tmp/food.docx`).then(function (data) {
+      reader.getText("/tmp/food.docx").then(function (data) {
         data = data.replace(/ *\([^)]*\) */g, " ").trim();
         data = data.replaceAll(" , ", ", ");
         let objects = [];
