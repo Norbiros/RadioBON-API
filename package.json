@@ -31,7 +31,7 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.18.1",
-    "jsdom": "^20.0.0",
+    "jsdom": "^20.0.1",
     "librus-api": "2.8.1"
   },
   "devDependencies": {
