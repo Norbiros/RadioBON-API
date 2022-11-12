@@ -15,7 +15,7 @@ let dinnersData = new Promise(async function (resolve) {
   const doc = new jsdom.JSDOM(html).window.document;
   let link = doc
     .querySelector("#teachers_Html_2")
-    .lastChild.querySelector("a").href;
+    .querySelector("a").href;
   link = link.replace("//", "https://");
   let file = fs.createWriteStream("/tmp/food.docx");
   http.get(link, function (response) {
